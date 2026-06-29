@@ -125,7 +125,7 @@
       "enable_keyword_trigger": {
         "type": "switch",
         "name": "启用关键词触发",
-        "default": true,
+        "default": false,
         "hint": "允许通过关键词手动切换阶段（消息不经过 LLM）"
       },
       "advance_keywords": {
