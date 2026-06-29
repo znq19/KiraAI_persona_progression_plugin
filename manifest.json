@@ -1,0 +1,14 @@
+{
+  "plugin_id": "kiraAI_persona_progression",
+  "display_name": "人设动态切换系统",
+  "version": "1.0.0",
+  "author": "znq19",
+  "description": "根据对话轮数和 AI 语义判断自动切换人格，支持多阶段、会话独立、衰退机制、消息裁剪。",
+  "repo": "https://github.com/znq19/KiraAI_persona_progression_plugin",
+  "locales": {
+    "zh": {
+      "display_name": "人设动态切换系统",
+      "description": "根据对话轮数和 AI 语义判断自动切换人格，支持多阶段、会话独立、衰退机制、消息裁剪。"
+    }
+  }
+}

@@ -1,0 +1,218 @@
+{
+  "section_basic": {
+    "type": "section",
+    "name": "基础设置",
+    "collapsed": false,
+    "fields": {
+      "enabled": {
+        "type": "switch",
+        "name": "启用插件",
+        "default": true
+      },
+      "persona_scope": {
+        "type": "enum",
+        "name": "人格与阶段作用域",
+        "default": "session",
+        "options": ["global", "session"],
+        "hint": "global：所有会话共用阶段进度和激活人格（切换全局激活人格）；session：每个会话独立阶段进度和人格（动态注入，推荐）"
+      },
+      "total_stages": {
+        "type": "integer",
+        "name": "总阶段数",
+        "default": 3,
+        "minimum": 2,
+        "maximum": 30,
+        "hint": "阶段编号从 0 到 total_stages-1"
+      },
+      "stage_persona_map": {
+        "type": "list",
+        "name": "阶段→人格 ID 或名称 映射",
+        "default": [],
+        "hint": "每行一个映射，格式：阶段编号;人格ID或人格名称（系统会自动匹配）。示例：\n0;default\n1;warm\n2;hot\n也可直接使用人格ID：0;persona_uuid_here"
+      },
+      "initial_stage": {
+        "type": "integer",
+        "name": "初始阶段",
+        "default": 0,
+        "minimum": 0,
+        "hint": "新会话的起始阶段编号"
+      },
+      "enable_debug_log": {
+        "type": "switch",
+        "name": "启用调试日志",
+        "default": false,
+        "hint": "开启后输出详细的轮数、AI判断、人格切换日志，便于排查问题。"
+      }
+    }
+  },
+  "section_trigger": {
+    "type": "section",
+    "name": "触发设置",
+    "collapsed": false,
+    "fields": {
+      "trigger_interval": {
+        "type": "integer",
+        "name": "检测间隔（轮数）",
+        "default": 10,
+        "minimum": 1,
+        "hint": "每累计多少轮完整对话触发一次 AI 判断。一轮 = 一条用户消息 + 后续助手/工具消息。"
+      },
+      "enable_ai_judge": {
+        "type": "switch",
+        "name": "启用 AI 判断",
+        "default": true,
+        "hint": "关闭后，达到间隔轮数不会自动切换，仅重置计数，需手动调用工具或关键词触发。"
+      },
+      "auxiliary_model": {
+        "type": "model_select",
+        "model_type": "llm",
+        "name": "辅助 LLM 模型",
+        "default": "",
+        "hint": "用于语义判断的模型，留空则使用默认快速模型。"
+      },
+      "ignore_tool_messages": {
+        "type": "switch",
+        "name": "忽略工具调用消息",
+        "default": true,
+        "hint": "发送给辅助 LLM 时，不包含工具调用（tool_calls）和工具结果（tool 角色）消息，以节省 token。"
+      },
+      "ignore_assistant_messages": {
+        "type": "switch",
+        "name": "忽略助手回复消息",
+        "default": false,
+        "hint": "发送给辅助 LLM 时，不包含助手纯文本回复，仅保留用户消息（极端节省 token）。"
+      }
+    }
+  },
+  "section_ai": {
+    "type": "section",
+    "name": "AI 判断提示词",
+    "collapsed": true,
+    "fields": {
+      "judge_prompt": {
+        "type": "textarea",
+        "name": "判断提示词模板",
+        "default": "你是一个人格切换判断器。当前阶段为 {stage}，最大阶段为 {max_stage}。下面是最近的对话（可能只包含部分消息）：\n{conversation_text}\n\n请根据对话内容判断是否应升级（up）、降级（down）或保持（stay）。只输出一个单词：up/down/stay。",
+        "hint": "可用占位符：{stage}, {max_stage}, {conversation_text}（自动填充裁剪后的对话）"
+      }
+    }
+  },
+  "section_decay": {
+    "type": "section",
+    "name": "衰退机制",
+    "collapsed": true,
+    "fields": {
+      "enable_decay": {
+        "type": "switch",
+        "name": "启用衰退",
+        "default": true,
+        "hint": "若连续多次检测无升级，则自动降级"
+      },
+      "decay_threshold": {
+        "type": "integer",
+        "name": "衰退阈值（连续保持次数）",
+        "default": 3,
+        "minimum": 1,
+        "hint": "连续多少次检测结果为 stay 时触发降级（仅当 enable_decay 为 true）"
+      }
+    }
+  },
+  "section_manual": {
+    "type": "section",
+    "name": "手动控制",
+    "collapsed": true,
+    "fields": {
+      "enable_keyword_trigger": {
+        "type": "switch",
+        "name": "启用关键词触发",
+        "default": true,
+        "hint": "允许通过关键词手动切换阶段（消息不经过 LLM）"
+      },
+      "advance_keywords": {
+        "type": "list",
+        "name": "进阶关键词",
+        "default": ["/进阶", "/升级"],
+        "hint": "匹配任意关键词即触发进阶（不分大小写）"
+      },
+      "decay_keywords": {
+        "type": "list",
+        "name": "降级关键词",
+        "default": ["/降级", "/退阶"],
+        "hint": "匹配任意关键词即触发降级"
+      },
+      "clear_keywords": {
+        "type": "list",
+        "name": "清空计数关键词",
+        "default": ["/消级", "/清数"],
+        "hint": "匹配任意关键词即重置 turn_counter（不影响阶段）"
+      },
+      "enable_tool": {
+        "type": "switch",
+        "name": "启用工具调用",
+        "default": true,
+        "hint": "注册人格管理相关工具（查询/设置/进阶/降级/重置计数等），允许 LLM 通过自然语言调用"
+      },
+      "reset_on_manual": {
+        "type": "switch",
+        "name": "手动切换重置轮数",
+        "default": false,
+        "hint": "开启后，任何手动切换（关键词或工具）都会将 turn_counter 清零，重新计数。"
+      },
+      "clear_context_on_switch": {
+        "type": "switch",
+        "name": "切换人设时自动清除上下文",
+        "default": false,
+        "hint": "开启后，每次切换人格阶段时会自动清除当前会话的上下文记忆。建议人设差别过大、需要扮演失忆/重启等场景时开启。注意：开启后会导致之前对话内容丢失，不借助其他工具无法获得旧消息。"
+      }
+    }
+  },
+  "section_permission": {
+    "type": "section",
+    "name": "权限控制与反馈",
+    "collapsed": true,
+    "fields": {
+      "enable_permission": {
+        "type": "switch",
+        "name": "启用权限控制",
+        "default": false,
+        "hint": "启用后只有白名单用户才能手动切换阶段（关键词和工具调用）"
+      },
+      "allowed_users": {
+        "type": "list",
+        "name": "允许的用户 ID",
+        "default": [],
+        "hint": "每行一个 QQ 号，仅这些用户可以使用手动切换功能"
+      },
+      "permission_denied_message": {
+        "type": "string",
+        "name": "权限不足回复消息",
+        "default": "❌ 权限不足：您没有权限切换人格阶段",
+        "hint": "当无权限用户尝试手动切换时回复的消息"
+      },
+      "success_message": {
+        "type": "string",
+        "name": "切换成功回复消息",
+        "default": "✅ 已切换人格阶段：{action} 至阶段 {stage}",
+        "hint": "手动切换成功时回复的消息模板，可用占位符：{action}（进阶/降级/设置）, {stage}（目标阶段）"
+      },
+      "error_message": {
+        "type": "string",
+        "name": "切换失败回复消息",
+        "default": "❌ 切换失败：{error}",
+        "hint": "切换失败时回复的消息模板，可用占位符：{error}"
+      },
+      "max_stage_message": {
+        "type": "string",
+        "name": "已达最大阶段回复消息",
+        "default": "⚠️ 已达最大阶段（{max_stage}），无法继续进阶",
+        "hint": "尝试进阶但已处于最大阶段时回复的消息，可用占位符：{max_stage}, {current_stage}"
+      },
+      "min_stage_message": {
+        "type": "string",
+        "name": "已达最低阶段回复消息",
+        "default": "⚠️ 已达最低阶段（{min_stage}），无法继续降级",
+        "hint": "尝试降级但已处于最低阶段时回复的消息，可用占位符：{min_stage}, {current_stage}"
+      }
+    }
+  }
+}
