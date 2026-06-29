@@ -1,4 +1,4 @@
-## KiraAI_persona_progression(KPP)/人设动态切换系统
+## KiraAI_persona_progression(KPP)/人设动态切换系统1.0
 
 > 让 AI 拥有“动态变化人格” —— 在对话中根据轮数和语义判断自动切换人格，实现角色成长、觉醒、黑化、失忆等动态叙事体验。
 
