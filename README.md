@@ -277,7 +277,7 @@ kiraAI_plugin_persona_progression/
 
 ### 🙏 致谢
 
-- 参考了 [**Reboot 上下文重置插件**](./reboot_plugin) 的权限控制和消息反馈设计
+- 参考了 [**Reboot 上下文重置插件**]([./reboot_plugin](https://github.com/luochenYukitsune/kiraai-reboot-pulgin) 的权限控制和消息反馈设计
 - 感谢 KiraAI 框架提供的插件系统和人格管理能力
 
 
