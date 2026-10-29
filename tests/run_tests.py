@@ -659,13 +659,14 @@ async def run_gen_suite(gen, pkg, mod):
     # ---------- 8. JEV：真 HTTP 成功判断 ----------
     section(f"[{gen}] JEV 决策引擎（真 HTTP stub）")
     srv, base, jh = jev_server([(200, jev_choice("up", 0.9))])
+    entries = {("pm", "jev-latest"): {"provider_name": "测试", "model_name": "jev-latest",
+                                      "provider_config": {"base_url": base, "api_key": "sk-test"}}}
     cfg = default_cfg(section_jev={
-        "jev_enabled": True, "jev_base_url": base, "jev_api_key": "sk-test",
-        "jev_model_name": "jev-latest", "jev_timeout_ms": 4000,
+        "jev_enabled": True, "jev_models": ["pm:jev-latest"], "jev_timeout_ms": 4000,
         "jev_min_confidence": 0, "jev_fallback_llm": True,
     })
     aux = StubLLM(replies=["stay"])
-    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg, aux_llm=aux)
+    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg, aux_llm=aux, provider_entries=entries)
     check("JEV 客户端就绪", plugin.jev_client is not None and plugin.jev_client.ready)
     d = await plugin._decide("s1", 0, "用户：喜欢你\n助手：也喜欢你")
     check("JEV 判断 up 生效", d == "up", d)
@@ -683,11 +684,13 @@ async def run_gen_suite(gen, pkg, mod):
 
     # ---------- 9. JEV：置信门槛 ----------
     srv, base, jh = jev_server([(200, jev_choice("up", 0.2))])
+    entries = {("pm", "jev-latest"): {"provider_name": "测试", "model_name": "jev-latest",
+                                      "provider_config": {"base_url": base, "api_key": "sk-test"}}}
     cfg = default_cfg(section_jev={
-        "jev_enabled": True, "jev_base_url": base, "jev_api_key": "sk-test",
+        "jev_enabled": True, "jev_models": ["pm:jev-latest"],
         "jev_min_confidence": 50, "jev_fallback_llm": True,
     })
-    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg)
+    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg, provider_entries=entries)
     d = await plugin._decide("s1", 0, "对话")
     check("低置信 → 保守 stay", d == "stay", d)
     srv.shutdown()
@@ -696,11 +699,13 @@ async def run_gen_suite(gen, pkg, mod):
 
     # ---------- 10. JEV：失败回退辅助 LLM ----------
     srv, base, jh = jev_server([(500, {"error": "boom"})])
+    entries = {("pm", "jev-latest"): {"provider_name": "测试", "model_name": "jev-latest",
+                                      "provider_config": {"base_url": base, "api_key": "sk-test"}}}
     cfg = default_cfg(section_jev={
-        "jev_enabled": True, "jev_base_url": base, "jev_api_key": "sk-test", "jev_fallback_llm": True,
+        "jev_enabled": True, "jev_models": ["pm:jev-latest"], "jev_fallback_llm": True,
     })
     aux = StubLLM(replies=["up"])
-    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg, aux_llm=aux)
+    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg, aux_llm=aux, provider_entries=entries)
     d = await plugin._decide("s1", 0, "对话")
     check("JEV 失败回退 LLM → up", d == "up", d)
     check("LLM 被调用兜底", len(aux.calls) == 1)
@@ -710,11 +715,13 @@ async def run_gen_suite(gen, pkg, mod):
 
     # ---------- 11. JEV：回退关闭时失败 → stay 且不调 LLM ----------
     srv, base, jh = jev_server([(500, {"error": "boom"})])
+    entries = {("pm", "jev-latest"): {"provider_name": "测试", "model_name": "jev-latest",
+                                      "provider_config": {"base_url": base, "api_key": "sk-test"}}}
     cfg = default_cfg(section_jev={
-        "jev_enabled": True, "jev_base_url": base, "jev_api_key": "sk-test", "jev_fallback_llm": False,
+        "jev_enabled": True, "jev_models": ["pm:jev-latest"], "jev_fallback_llm": False,
     })
     aux = StubLLM(replies=["up"])
-    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg, aux_llm=aux)
+    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg, aux_llm=aux, provider_entries=entries)
     d = await plugin._decide("s1", 0, "对话")
     check("回退关闭时 JEV 失败 → stay", d == "stay", d)
     check("回退关闭时不调 LLM（更省）", len(aux.calls) == 0)
@@ -724,10 +731,12 @@ async def run_gen_suite(gen, pkg, mod):
 
     # ---------- 12. JEV：熔断（3 连败冷却，冷却中零请求） ----------
     srv, base, jh = jev_server([(500, {"error": "x"}), (500, {"error": "x"}), (500, {"error": "x"}), (200, jev_choice("up"))])
+    entries = {("pm", "jev-latest"): {"provider_name": "测试", "model_name": "jev-latest",
+                                      "provider_config": {"base_url": base, "api_key": "sk-test"}}}
     cfg = default_cfg(section_jev={
-        "jev_enabled": True, "jev_base_url": base, "jev_api_key": "sk-test", "jev_fallback_llm": False,
+        "jev_enabled": True, "jev_models": ["pm:jev-latest"], "jev_fallback_llm": False,
     })
-    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg)
+    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg, provider_entries=entries)
     jc = plugin.jev_client
     for _ in range(3):
         await jc.decide("s", "i")
@@ -776,7 +785,8 @@ async def run_gen_suite(gen, pkg, mod):
     })
     plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg)
     d = await plugin._decide("s1", 0, "对话")
-    check("模型组为空 → 手动兜底生效", d == "stay", d)
+    check("模型组为空 → 旧手动兜底已移除（JEV 不就绪，走机械 stay）",
+          plugin.jev_client is None and d == "stay", d)
     srv.shutdown()
     await plugin.terminate()
     shutil.rmtree(tmp, ignore_errors=True)
@@ -799,11 +809,13 @@ async def run_gen_suite(gen, pkg, mod):
     check("完整端点不重复拼", jev_mod.endpoint_of("https://x.com/v1/systemone/") == "https://x.com/v1/systemone")
     check("chat/completions 尾巴剥掉", jev_mod.endpoint_of("https://x.com/v1/chat/completions") == "https://x.com/v1/systemone")
     srv, base, jh = jev_server([(200, None)])  # 挂起 3s
+    entries = {("pm", "jev-latest"): {"provider_name": "测试", "model_name": "jev-latest",
+                                      "provider_config": {"base_url": base, "api_key": "sk-test"}}}
     cfg = default_cfg(section_jev={
-        "jev_enabled": True, "jev_base_url": base, "jev_api_key": "sk-test",
+        "jev_enabled": True, "jev_models": ["pm:jev-latest"],
         "jev_timeout_ms": 600, "jev_fallback_llm": False,
     })
-    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg)
+    plugin, ctx, tmp = await make_plugin(gen, pkg, mod, cfg, provider_entries=entries)
     t0 = time.monotonic()
     d = await plugin._decide("s1", 0, "对话")
     el = time.monotonic() - t0
@@ -963,8 +975,17 @@ async def run_gen_suite(gen, pkg, mod):
             "provider_config": {"base_url": "https://jev-relay.example.com", "api_key": "sk-test-0000"},
             "model_config": {"llm": {"9f8e7d6c5b4a3c2d1e0f9a8b7c6d5e4f":
                                       {"model_name": "jev-latest", "config": {}}}},
+        },
+        "provD": {
+            # 3.1.1 新增：TypeSafe 决策模型（decision 分组）
+            "format": "typesafe", "status": "active", "model_config_version": 2,
+            "name": "TypeSafe决策",
+            "provider_config": {"base_url": "https://ts.example.com", "api_key": "sk-test-0000"},
+            "model_config": {"decision": {"aabbccddeeff00112233445566778899":
+                                          {"model_name": "jev-latest", "config": {}}}},
         }}
         real_ref = "provA:9f8e7d6c5b4a3c2d1e0f9a8b7c6d5e4f"
+        dec_ref = "provD:aabbccddeeff00112233445566778899"
     else:
         # 2.x 传统格式：模型键即可读名，条目即配置
         providers = {"provA": {
@@ -990,6 +1011,15 @@ async def run_gen_suite(gen, pkg, mod):
             check("链描述可读且不含密钥",
                   bool(displays) and "jev-latest" in displays[0] and "sk-test-0000" not in displays[0],
                   str(displays))
+            if gen == "3.0":
+                links2, _ = plugin._resolve_jev_links({"jev_decision_models": [dec_ref]})
+                check("decision 组 → JEV 链",
+                      links2 == [("https://ts.example.com", "sk-test-0000", "jev-latest")], str(links2))
+                links3, _ = plugin._resolve_jev_links({"jev_models": [real_ref],
+                                                       "jev_decision_models": [dec_ref]})
+                check("llm→decision 合并顺序",
+                      [l[0] for l in links3] == ["https://jev-relay.example.com", "https://ts.example.com"],
+                      str(links3))
             await plugin.terminate()
             shutil.rmtree(tmp, ignore_errors=True)
     except Exception as e:

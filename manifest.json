@@ -1,7 +1,7 @@
 {
   "plugin_id": "kira_persona_progression",
   "display_name": "人设动态切换系统",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "author": "znq19",
   "icon": "icon.png",
   "tags": [

@@ -1,6 +1,6 @@
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/znq19/KiraAI_persona_progression_plugin)
 
-## KiraAI_persona_progression(KPP)/人设动态切换系统1.2.2
+## KiraAI_persona_progression(KPP)/人设动态切换系统1.2.3
 
 > 让 AI 拥有“动态变化人格” —— 在对话中根据轮数和语义判断自动切换人格，实现角色成长、觉醒、黑化、失忆等动态叙事体验。
 
@@ -388,6 +388,17 @@ A：是的，这是设计如此。该功能会调用 `delete_session` 清除历�
 
 <details>
 <summary>点击展开</summary>
+
+#### v1.2.3
+
+- **适配 KiraAI 3.1.1 新增的 TypeSafe 决策模型提供商**：框架把决策模型放在 provider 的
+  `model_config.decision` 分组，而配置页一个模型字段只能绑定一个 `model_type`（框架限制）⇒
+  新增独立多选「JEV 决策模型组（TypeSafe · 3.1.1+）」，与原有「JEV 模型组（OpenAI 兼容）」
+  按「llm 组 → 决策组 → 手动」合并成同一条有序回退链。两组都留空 = 旧行为逐字节不变。
+- **移除旧版手动 JEV 连接配置**：`jev_base_url` / `jev_api_key` / `jev_model_name` 不再出现在设置页；
+  旧值一律**忽略**（启动日志会提示），请改用「提供商 + JEV 模型组」。
+- 测试：真实 ProviderManager 增加 decision 分组解析；既有 250 项双世代用例全绿。
+- 版本 1.2.2 → 1.2.3
 
 #### v1.2.2
 

@@ -98,7 +98,7 @@ class JevConfig:
 
     links = [(base_url, api_key, model), ...] **有序回退链**：
       · 来自 webui 已注册提供商的模型多选（jev_models），自动继承接口地址/密钥/模型名；
-      · 末尾可追加手动填写的显式连接（jev_base_url/jev_api_key/jev_model_name）作兜底；
+      · 旧版手动连接字段已移除（3.1.1 起改用提供商注册）；
       · 缺地址或密钥的档在解析侧就被跳过（记日志），不会进链。
     """
 

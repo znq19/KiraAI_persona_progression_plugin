@@ -349,16 +349,25 @@ class PersonaProgressionPlugin(BasePlugin):
 
     # ---------- JEV 连接链解析 ----------
     def _resolve_jev_links(self, jev_sec: dict):
-        """jev_models（已注册提供商模型多选）→ [(base, key, model)]；显式字段作最后兜底。
+        """jev_models / jev_decision_models → [(base, key, model)] 有序回退链。
 
         返回 (links, displays)。displays 只含可读名与端点主机，**绝不含密钥**。
+
+        3.1.1 起框架有专门的 TypeSafe 决策模型提供商（model_config.decision 分组），
+        而配置页一个模型字段只能绑定一个 model_type ⇒ 用两个多选分别收集，
+        按「llm 组 → 决策组」合并成同一条有序回退链（都为空 = 旧行为）。
         """
         links = []
         displays = []
         refs = jev_sec.get("jev_models") or []
         if not isinstance(refs, list):
             refs = []
-        for ref in refs[:10]:
+        drefs = jev_sec.get("jev_decision_models") or []
+        if not isinstance(drefs, list):
+            drefs = []
+        # 两组各自 ≤10 档（合计 ≤20）：不能因为填满一组就把另一组静默丢掉
+        refs = refs[:10] + drefs[:10]
+        for ref in refs:
             ref = str(ref).strip()
             if not ref:
                 continue
@@ -386,16 +395,13 @@ class PersonaProgressionPlugin(BasePlugin):
             links.append((base, key, model))
             host = base.split("://", 1)[-1].split("/", 1)[0]
             displays.append(f"{self._model_display(ref)} ⇒ {model}@{host}")
-        # 显式手动兜底（密钥非空才成链）
-        exp_key = str(jev_sec.get("jev_api_key") or "").strip()
-        if exp_key:
-            base = str(jev_sec.get("jev_base_url") or "").strip() or DEFAULT_BASE_URL
-            model = str(jev_sec.get("jev_model_name") or "").strip() or DEFAULT_MODEL
-            link = (base, exp_key, model)
-            if link not in links:
-                links.append(link)
-                host = base.split("://", 1)[-1].split("/", 1)[0]
-                displays.append(f"手动 ⇒ {model}@{host}")
+        # 旧版手动连接字段已移除（3.1.1 起改用提供商注册）：旧配置一律**忽略**，绝不隐形生效
+        if str(jev_sec.get("jev_api_key") or "").strip():
+            logger.warning(
+                "检测到旧版手动 JEV 配置（jev_base_url / jev_api_key / jev_model_name）："
+                "该方式已移除，配置已忽略、不再生效；请在「设置 → 提供商」注册 TypeSafe "
+                "或 OpenAI 兼容提供商，再在 JEV 模型组里选择。"
+            )
         return links, displays
 
     # ---------- 展示辅助 ----------
